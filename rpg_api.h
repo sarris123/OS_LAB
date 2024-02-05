@@ -6,13 +6,15 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-/* define functions*/
+/* define functions
 
 int calc_strength(int type, int fighter_level,int mage_level);
 int sys_rpg_create_character(int cclass);
 int sys_rpg_fight(int type , int level);
 int sys_rpg_get_stats(struct rpg_stats* stats);
 int sys_rpg_join(pid_t player);
+
+*/
 
 /* create rpg_stat srtuct */
 struct rpg_stats {
@@ -23,7 +25,7 @@ struct rpg_stats {
 	int mage_levels;
 };
 
-/* create player struct*/
+/* create player struct
 struct player {
 	int player_level;
 	int cclass;
@@ -31,7 +33,7 @@ struct player {
 	list_t my_list;
 	
 };
-
+*/
 
 /*rpg_create wrapper function*/
 int rpg_create_character(int cclass){
@@ -42,8 +44,6 @@ int rpg_create_character(int cclass){
 		"pushl %%ebx;"
 		"movl $243, %%eax;"
 		"movl %1, %%ebx;"
-		"movl %2, %%ecx;"
-		"movl %3, %%edx;"
 		"int $0x80;"
 		"movl %%eax,%0;"
 		"popl %%ebx;"
