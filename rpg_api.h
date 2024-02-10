@@ -6,15 +6,6 @@
 #include <sys/types.h>
 #include <stdbool.h>
 
-/* define functions
-
-int calc_strength(int type, int fighter_level,int mage_level);
-int sys_rpg_create_character(int cclass);
-int sys_rpg_fight(int type , int level);
-int sys_rpg_get_stats(struct rpg_stats* stats);
-int sys_rpg_join(pid_t player);
-
-*/
 
 /* create rpg_stat srtuct */
 struct rpg_stats {
@@ -25,15 +16,6 @@ struct rpg_stats {
 	int mage_levels;
 };
 
-/* create player struct
-struct player {
-	int player_level;
-	int cclass;
-	bool party_member;
-	list_t my_list;
-	
-};
-*/
 
 /*rpg_create wrapper function*/
 int rpg_create_character(int cclass){

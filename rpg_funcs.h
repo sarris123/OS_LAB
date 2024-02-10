@@ -10,16 +10,19 @@
 
 
 /* define functions*/
-
-int calc_strength(int type, int fighter_level,int mage_level);
+int has_character(struct task_struct *pros);
 int sys_rpg_create_character(int cclass);
 int sys_rpg_fight(int type , int level);
+int calc_strength(int type, struct task_struct * leader);
 int sys_rpg_get_stats(struct rpg_stats* stats);
+int get_cclass(struct task_struct* leader,pid_t pid);
+int get_player_level(struct task_struct* leader,pid_t pid);
 int sys_rpg_join(pid_t player);
-void init_pid_list(void);
-int add_to_list(pid_t pid);
-int pid_in_list(pid_t pid);
-void remove_from_list(pid_t pid);
+void moving_list(struct task_struct* source,struct task_struct* new);
+void update_leader(struct task_struct* dest);
+void move_my_node(pid_t my_id,struct task_struct* old_leader,struct task_struct* new_leader);
+int rpg_fork(struct task_struct* son);
+int rpg_exit(struct task_struct* proc);
 
 
 

@@ -331,15 +331,35 @@ void move_my_node(pid_t my_id,struct task_struct* old_leader,struct task_struct*
 
 /**************************************************************/
 int rpg_fork(struct task_struct* son){
-	son->has_character = 0;
+	son->party_member = NOT_A_MEMBER;
+	son->group_leader = son;
 	struct list_head *cursor,*tmp;
-	struct player *entry;
 	if (list_empty(&(son->party_list))){
 		return 0;
 	}
-	list_for_each_entry_safe(cursor,tmp,&(son->party_list)){
-		entry = list_entry(cursor,struct player)
+	struct player *entry;
+	list_for_each_safe (cursor, tmp, &(son->party_list)){
+		entry = list_entry(cursor,struct player,my_list);
+		list_del(cursor);
+		kfree (entry);
 	}
+	return 0;
+
+}
+
+
+int rpg_exit(struct task_struct* proc){
+	struct list_head *cursor,*tmp;
+	struct player *entry;
+	if (list_empty(&(proc->party_list))){
+		return 0;
+	}
+	list_for_each_safe (cursor, tmp, &(proc->party_list)){
+		entry = list_entry(cursor,struct player,my_list);
+		list_del(cursor);
+		kfree (entry);
+	}
+	return 0;
 }
 
 
