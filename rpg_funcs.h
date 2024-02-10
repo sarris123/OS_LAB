@@ -25,18 +25,18 @@ void remove_from_list(pid_t pid);
 
 /* create player struct*/
 struct player {
+	pid_t player_pid;
 	int player_level;
 	int cclass;
-	int party_member;
 	list_t my_list;
-	
 };
 
-/* create a struct to store the pid's of the processes
-   that have a characters */
-struct pid_node {
-    pid_t pid;
-    struct list_head list;
+struct rpg_stats{
+	int cclass;
+	int level;
+	int party_size;
+	int fighter_levels;
+	int mage_levels;
 };
 
 
