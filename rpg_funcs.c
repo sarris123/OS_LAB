@@ -1,4 +1,4 @@
-#include <linux/errno.h>
+
 #include <linux/rpg_funcs.h>
 #include <asm/current.h>
 
@@ -39,16 +39,16 @@ int sys_rpg_create_character(int cclass){
 	struct task_struct *current_task = current;
 	if(has_character(current_task)){
 		//process already has a character
-		errno = EEXIST;
-		return ERROR;
+		//errno = EEXIST;
+		return -EEXIST;
 	}
 	else{
 		//player does not have a character, create one
 		struct player *character = (struct player *)kmalloc(sizeof(struct player), GFP_KERNEL);
 		if(character == NULL){
 			//allocation failed
-			errno = -ENOMEM;
-			return ERROR;
+			//errno = -ENOMEM;
+			return -ENOMEM;
 		}
 		character->player_level = 1;
 		pid_t my_id = current_task->pid;
@@ -61,8 +61,8 @@ int sys_rpg_create_character(int cclass){
 			character->cclass = FIGHTER;
 		}else{
 			kfree(character);
-			errno = EINVAL;
-			return ERROR;
+			//errno = EINVAL;
+			return -EINVAL;
 		}
 		//player is not a part of a party, he is his own group leader
 		current_task -> group_leader = current_task;
@@ -79,31 +79,38 @@ int sys_rpg_fight(int type , int level){
 	struct task_struct *current_task = current;
 	// check if arguments are valid
 	if( level < 0 ){
-		errno = EINVAL;
-		return ERROR;
+		//errno = EINVAL;
+		return -EINVAL;
 	}
 	if(!(type == CREATURE_ORC)){
-		errno = EINVAL;
-		return ERROR;
+		//errno = EINVAL;
+		return -EINVAL;
 	}
 	if(!(type == CREATURE_DEMON)){
-		errno = EINVAL;
-		return ERROR;
+		//errno = EINVAL;
+		return -EINVAL;
 	}
 	//check if process has a character
 	if(!has_character(current_task)){
 		//player does not have a character
-		errno = EINVAL;
-		return ERROR;	
+		//errno = EINVAL;
+		return -EINVAL;	
 	}
 
 	//getting the party info
 	struct task_struct* leader = current -> group_leader;
+	if(!leader){
+		//pointer is NULL
+		return ERROR;
+	}
 	int strength = calc_strength(type,leader);
 	if(strength >= level){
 		//party wins
 		struct player *entry;
-		list_for_each_entry(entry,&(leader->party_list),my_list){
+		struct list_head* tmp;
+		struct list_head* position;
+		list_for_each_safe (position, tmp, &(leader->party_list)){
+			entry = list_entry (position, struct player, my_list);
 			(entry->player_level)++;
 		}
 		return WIN;		
@@ -111,23 +118,32 @@ int sys_rpg_fight(int type , int level){
 	else{
 		//party lost
 		struct player *entry;
-		list_for_each_entry(entry,&(leader->party_list),my_list){
+		struct list_head* tmp;
+		struct list_head* position;
+		list_for_each_safe (position, tmp, &(leader->party_list)){
+			entry = list_entry (position, struct player, my_list);
 			(entry->player_level)--;
 			if(entry->player_level < 0){
 				entry->player_level = 0;
 					
 			}
 		}
-		return LOSE;	
+		return LOSE;
 	}
+			
 }
+	
+
 
 
 int calc_strength(int type, struct task_struct * leader){
 	int strength = 0;
 	if(type == CREATURE_ORC){
 		struct player *entry;
-		list_for_each_entry(entry,&(leader->party_list),my_list){
+		struct list_head* tmp;
+		struct list_head* position;
+		list_for_each_safe(position,tmp,&(leader->party_list)){
+			entry = list_entry (position, struct player, my_list);
 			if(entry->cclass == FIGHTER ){
 				strength += 2*(entry->player_level);
 			}else if(entry->cclass == MAGE){
@@ -137,7 +153,10 @@ int calc_strength(int type, struct task_struct * leader){
 	}
 	if(type == CREATURE_DEMON){
 		struct player *entry;
-		list_for_each_entry(entry,&(leader->party_list),my_list){
+		struct list_head* tmp;
+		struct list_head* position;
+		list_for_each_safe(position,tmp,&(leader->party_list)){
+			entry = list_entry (position, struct player, my_list);
 			if(entry->cclass == FIGHTER ){
 				strength += (entry->player_level);
 			}else if(entry->cclass == MAGE){
@@ -152,22 +171,22 @@ int calc_strength(int type, struct task_struct * leader){
 int sys_rpg_get_stats(struct rpg_stats* stats){
 	//checking if stats is a NULL
 	if(stats == NULL){
-		errno = EINVAL;
-		return ERROR;
+		//errno = EINVAL;
+		return -EINVAL;
 	}
 
 	struct task_struct *current_task = current;
 	//check if proccess has a character
 	if(!has_character(current_task)){
 		//player does not have a character
-		errno = EINVAL;
-		return ERROR;	
+		//errno = EINVAL;
+		return -EINVAL;	
 	}
 	struct rpg_stats* my_stats = (struct rpg_stats*)kmalloc(sizeof(struct rpg_stats), GFP_KERNEL);
 	if(my_stats == NULL){
 		//allocation failed
-		errno = -ENOMEM;
-		return ERROR;
+		//errno = -ENOMEM;
+		return -ENOMEM;
 	}
 	//getting the party info
 	pid_t my_id = current_task->pid;
@@ -178,7 +197,10 @@ int sys_rpg_get_stats(struct rpg_stats* stats){
 	int fighter_levels = 0;
 	int mage_levels = 0;
 	struct player *entry;
-	list_for_each_entry(entry,&(leader->party_list),my_list){
+	struct list_head* tmp;
+	struct list_head* position;
+	list_for_each_safe(position,tmp,&(leader->party_list)){
+		entry = list_entry (position, struct player, my_list);
 		size++;
 		if(entry->cclass == FIGHTER){
 			fighter_levels += entry->player_level;
@@ -196,16 +218,20 @@ int sys_rpg_get_stats(struct rpg_stats* stats){
 
 	//sending info back to user 
 	if(copy_to_user(&stats,&my_stats,sizeof(struct rpg_stats))){
-		errno = EFAULT;  // Bad address
-		return ERROR;
+		//errno = EFAULT;  // Bad address
+		kfree(my_stats);
+		return -EFAULT;
 	}
+	kfree(my_stats);
 	return SUCCESS;
 }
 
 int get_cclass(struct task_struct* leader,pid_t pid){
 	struct player *entry;
-
-    list_for_each_entry(entry, &(leader->party_list),my_list) {
+	struct list_head* tmp;
+	struct list_head* position;
+    list_for_each_safe(position,tmp, &(leader->party_list)) {
+		entry = list_entry (position, struct player, my_list);
         if (entry->player_pid == pid)
             return (entry->cclass);
     }
@@ -214,8 +240,10 @@ int get_cclass(struct task_struct* leader,pid_t pid){
 
 int get_player_level(struct task_struct* leader,pid_t pid){
 	struct player *entry;
-
-    list_for_each_entry(entry, &(leader->party_list),my_list) {
+	struct list_head* tmp;
+	struct list_head* position;
+    list_for_each_safe(position,tmp, &(leader->party_list)) {
+		entry = list_entry (position, struct player, my_list);
         if (entry->player_pid == pid)
             return (entry->player_level);
     }
@@ -230,24 +258,27 @@ int sys_rpg_join(pid_t player){
 	player_task = find_task_by_pid(player); 
 	if(!player_task){
 		//player doesn't exist
-		errno = ESRCH;
-		return ERROR;
+		//errno = ESRCH;
+		return -ESRCH;
 	}
 	if(!has_character(current_task) || !has_character(player_task)){
 		//process or player does not havs a character
-		errno = EINVAL;
-		return ERROR;
+		//errno = EINVAL;
+		return -EINVAL;
 	}
 	if(current_task->party_member == NOT_A_MEMBER){
 		//proccess in not a party member
 		struct player* tmp;
 		//obtain the first node, proccess node
-		tmp = list_entry(current_task->party_list->next, struct player, my_list);
+		tmp = list_entry(current_task->party_list.next, struct player, my_list);
 		//remove proccess node from his list
 		list_del(&tmp->my_list);
 		//add node to the player list
 		struct task_struct* leader = player_task->group_leader;
-		list_add_tail(&tmp->my_list, leader->party_list);
+		if(leader == NULL){
+			return ERROR;
+		}
+		list_add_tail(&tmp->my_list, &(leader->party_list));
 		current_task->group_leader = leader;
 		current_task->party_member = MEMBER;
 		player_task->party_member = MEMBER;
@@ -277,8 +308,11 @@ void moving_list(struct task_struct* source,struct task_struct* new){
 	pid_t source_id = source->pid;
 	pid_t dest_id;
 	struct player *entry;
+	struct list_head* tmp;
+	struct list_head* position;
 	//find a new leader
-    list_for_each_entry(entry, &(source->party_list),my_list){
+    list_for_each_safe(position,tmp, &(source->party_list)){
+		entry = list_entry (position, struct player, my_list);
 		if(entry->player_pid != source_id){
 			dest_id = entry->player_pid;
 			break;
@@ -288,11 +322,14 @@ void moving_list(struct task_struct* source,struct task_struct* new){
 	//move list to new leader head
 	list_splice(&source->party_list, &dest->party_list);
 	//delete source player node from dest list, add to new list and update leader
-	struct player* tmp;
-	list_for_each_entry(tmp, &(dest->party_list),my_list){
-		if(tmp->player_pid == source_id){
-			list_del(&tmp->my_list);
-			list_add_tail(&tmp->my_list, &new->group_leader->party_list);
+	struct player *entry1;
+	struct list_head* tmp1;
+	struct list_head* position1;
+	list_for_each_safe(position1,tmp1, &(dest->party_list)){
+		entry1= list_entry (position, struct player, my_list);
+		if(entry1->player_pid == source_id){
+			list_del(&entry1->my_list);
+			list_add_tail(&entry1->my_list, &new->group_leader->party_list);
 			source->group_leader = new->group_leader;
 			break;
 		}
@@ -304,7 +341,10 @@ void moving_list(struct task_struct* source,struct task_struct* new){
 
 void update_leader(struct task_struct* dest){
 	struct player *entry;
-	list_for_each_entry(entry, &(dest->party_list),my_list){
+	struct list_head* tmp;
+	struct list_head* position;
+	list_for_each_safe(position,tmp, &(dest->party_list)){
+		entry= list_entry (position, struct player, my_list);
 		struct task_struct* node = find_task_by_pid(entry->player_pid);
 		node->group_leader = dest;
 	}
@@ -313,18 +353,17 @@ void update_leader(struct task_struct* dest){
 
 void move_my_node(pid_t my_id,struct task_struct* old_leader,struct task_struct* new_leader){
 	//locate my node in old leader list
-	struct player* tmp;
-	list_for_each_entry(tmp, &(old_leader->party_list),my_list){
-		if(tmp->player_pid == my_id){
-			list_del(&tmp->my_list);
-			list_add_tail(&tmp->my_list, &new_leader->party_list);
+	struct player* entry;
+	struct list_head* tmp;
+	struct list_head* position;
+	list_for_each_safe(position,tmp, &(old_leader->party_list)){
+		entry= list_entry (position, struct player, my_list);
+		if(entry->player_pid == my_id){
+			list_del(&entry->my_list);
+			list_add_tail(&entry->my_list, &new_leader->party_list);
 			break;
 		}
 	}
-
-
-
-
 
 }
 

@@ -1,9 +1,30 @@
+#ifndef _RPG_FUNCS_H_
+#define _RPG_FUNCS_H_
 
 #include <linux/list.h>
 #include <linux/sched.h>
 #include <linux/errno.h>
+#include <linux/slab.h> 
 #include <asm-i386/uaccess.h>
 #include <linux/types.h>
+#include <asm/uaccess.h>
+#include <asm/current.h>
+#include <linux/fs.h>
+
+
+
+
+
+
+
+struct rpg_stats{
+	int cclass;
+	int level;
+	int party_size;
+	int fighter_levels;
+	int mage_levels;
+};
+
 
 
 
@@ -31,16 +52,10 @@ struct player {
 	pid_t player_pid;
 	int player_level;
 	int cclass;
-	list_t my_list;
-};
-
-struct rpg_stats{
-	int cclass;
-	int level;
-	int party_size;
-	int fighter_levels;
-	int mage_levels;
+	struct list_head my_list;
 };
 
 
+
+#endif
 
