@@ -372,34 +372,79 @@ void move_my_node(pid_t my_id,struct task_struct* old_leader,struct task_struct*
 int rpg_fork(struct task_struct* son){
 	son->party_member = NOT_A_MEMBER;
 	son->group_leader = son;
-	struct list_head *cursor,*tmp;
-	if (list_empty(&(son->party_list))){
-		return 0;
-	}
-	struct player *entry;
-	list_for_each_safe (cursor, tmp, &(son->party_list)){
-		entry = list_entry(cursor,struct player,my_list);
-		list_del(cursor);
-		kfree (entry);
-	}
-	return 0;
 
+	LIST_HEAD_INIT(&(son->party_list));
+	return 0;
 }
 
-
+/* need to fixing, to check if group leader, to delete the proccess node*/
 int rpg_exit(struct task_struct* proc){
-	struct list_head *cursor,*tmp;
-	struct player *entry;
-	if (list_empty(&(proc->party_list))){
-		return 0;
+	pid_t my_id = proc->pid;
+	//check if the proccess is a party leader
+	if(proc->group_leader == proc){
+		//assign new leader and delete my node
+		if(!has_character(proc)){
+			//proccess has no character
+			return 0;
+		}else if(proc->party_member == NOT_A_MEMBER){
+			// only has one node in list, must delete
+			struct player *tmp = list_entry(proc->party_list.next, struct player, my_list);
+			//remove proccess node from his list
+			list_del(&tmp->my_list);
+			kfree(tmp);
+
+		}else{
+			pid_t dest_id;
+			struct player *entry;
+			struct list_head* tmp;
+			struct list_head* position;
+			//find a new leader
+			list_for_each_safe(position,tmp, &(source->party_list)){
+				entry = list_entry (position, struct player, my_list);
+				if(entry->player_pid != my_id){
+					dest_id = entry->player_pid;
+					break;
+				}
+			}
+			struct task_struct * new_leader = find_task_by_pid(dest_id);
+			//move list to new leader head
+			list_splice(&source->party_list, &new_leader->party_list);
+			//delete my node from new leader list, and update leader for the rest of the nodes
+			struct player *entry1;
+			struct list_head* tmp1;
+			struct list_head* position1;
+			list_for_each_safe(position1,tmp1, &(new_leader->party_list)){
+				entry1= list_entry (position, struct player, my_list);
+				if(entry1->player_pid == my_id){
+					list_del(&entry1->my_list);
+					kfree(entry1);
+					break;
+				}
+			}
+			//update leader in new leader nodes
+			update_leader(new_leader);
+		}	
 	}
-	list_for_each_safe (cursor, tmp, &(proc->party_list)){
-		entry = list_entry(cursor,struct player,my_list);
-		list_del(cursor);
-		kfree (entry);
+	else{
+		// delete my node
+		struct task_struct *leader = proc->group_leader;
+		struct player* entry;
+		struct list_head* tmp;
+		struct list_head* position;
+		list_for_each_safe(position,tmp, &(leader->party_list)){
+			entry= list_entry (position, struct player, my_list);
+			if(entry->player_pid == my_id){
+				list_del(&entry->my_list);
+				kfree (entry);
+				break;
+			}
+
+		}
 	}
 	return 0;
+
 }
+
 
 
 
