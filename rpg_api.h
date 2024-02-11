@@ -1,10 +1,7 @@
 #include <stdio.h>
-#include <linux/list.h>
-#include <linux/sched.h>
 #include <errno.h>
-#include <asm/uaccess.h>
 #include <sys/types.h>
-#include <stdbool.h>
+
 
 
 /* create rpg_stat srtuct */
