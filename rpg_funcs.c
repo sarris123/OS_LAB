@@ -76,26 +76,20 @@ int sys_rpg_create_character(int cclass){
 /******************************************************************************************************/
 
 int sys_rpg_fight(int type , int level){
+
+	printk(KERN_INFO "all args are valid!!!!!!!!!!!!\n");
 	struct task_struct *current_task = current;
 	// check if arguments are valid
-	if( level < 0 ){
-		//errno = EINVAL;
-		return -EINVAL;
-	}
-	if(type != CREATURE_ORC){
-		//errno = EINVAL;
-		return -EINVAL;
-	}
-	if(type != CREATURE_DEMON){
-		//errno = EINVAL;
-		return -EINVAL;
-	}
+	 if (level < 0 || (type != CREATURE_ORC && type != CREATURE_DEMON)) {
+        return -EINVAL;
+    }
 	//check if process has a character
 	if(!has_character(current_task)){
 		//player does not have a character
 		//errno = EINVAL;
 		return -EINVAL;	
 	}
+	printk(KERN_INFO "all args are valid\n");
 
 	//getting the party info
 	struct task_struct* leader = current -> group_leader;
@@ -108,7 +102,9 @@ int sys_rpg_fight(int type , int level){
 		list_for_each_safe (position, tmp, &(leader->party_list)){
 			entry = list_entry (position, struct player, my_list);
 			(entry->player_level)++;
+			printk(KERN_INFO "player with pid %d is now a level %d player\n",entry->player_pid,entry->player_level);
 		}
+		
 		return WIN;		
 	}
 	else{
@@ -272,7 +268,7 @@ int sys_rpg_join(pid_t player){
 		//add node to the player list
 		struct task_struct* leader = player_task->group_leader;
 		if(leader == NULL){
-			return ERROR;
+			printk(KERN_INFO "pointer problemssssssssssss\n");
 		}
 		list_add_tail(&tmp->my_list, &(leader->party_list));
 		current_task->group_leader = leader;
@@ -378,13 +374,14 @@ int rpg_fork(struct task_struct* son){
 /* need to fixing, to check if group leader, to delete the proccess node*/
 int rpg_exit(struct task_struct* proc){
 	pid_t my_id = proc->pid;
+	if(!has_character(proc)){
+		//proccess has no character
+		return 0;
+	}
 	//check if the proccess is a party leader
 	if(proc->group_leader == proc){
 		//assign new leader and delete my node
-		if(!has_character(proc)){
-			//proccess has no character
-			return 0;
-		}else if(proc->party_member == NOT_A_MEMBER){
+		if(proc->party_member == NOT_A_MEMBER){
 			// only has one node in list, must delete
 			struct player *tmp = list_entry(proc->party_list.next, struct player, my_list);
 			//remove proccess node from his list
@@ -396,29 +393,34 @@ int rpg_exit(struct task_struct* proc){
 			struct player *entry;
 			struct list_head* tmp;
 			struct list_head* position;
-			//find a new leader
+			//find my node and delete it
 			list_for_each_safe(position,tmp, &(proc->party_list)){
 				entry = list_entry (position, struct player, my_list);
-				if(entry->player_pid != my_id){
-					dest_id = entry->player_pid;
+				if(entry->player_pid == my_id){
+					list_del(&entry->my_list);
+					kfree(entry);
 					break;
 				}
 			}
-			struct task_struct * new_leader = find_task_by_pid(dest_id);
-			//move list to new leader head
-			list_splice(&proc->party_list, &new_leader->party_list);
-			//delete my node from new leader list, and update leader for the rest of the nodes
+			//check if list now empty
+			if(list_empty(&proc->party_list)){
+				return 0;
+			}
+			//find a new leader to the other nodes
 			struct player *entry1;
 			struct list_head* tmp1;
 			struct list_head* position1;
-			list_for_each_safe(position1,tmp1, &(new_leader->party_list)){
+			list_for_each_safe(position1,tmp1, &(proc->party_list)){
 				entry1= list_entry (position1, struct player, my_list);
-				if(entry1->player_pid == my_id){
-					list_del(&entry1->my_list);
-					kfree(entry1);
+				if(entry1->player_pid != my_id){
+					dest_id = entry1->player_pid; 
 					break;
 				}
 			}
+			// find new leader task_struct
+			struct task_struct * new_leader = find_task_by_pid(dest_id);
+			//move list to new leader head
+			list_splice(&proc->party_list, &new_leader->party_list);
 			//update leader in new leader nodes
 			update_leader(new_leader);
 		}	
