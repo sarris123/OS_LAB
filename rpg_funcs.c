@@ -68,6 +68,7 @@ int sys_rpg_create_character(int cclass){
 		current_task -> group_leader = current_task;
 		//add player to his party list
 		list_add_tail(&character->my_list, &(current_task->party_list));
+		printk(KERN_INFO " process has created character with pid %d\n",character->player_pid);
 		return SUCCESS; 
 	}
 	
@@ -77,8 +78,9 @@ int sys_rpg_create_character(int cclass){
 
 int sys_rpg_fight(int type , int level){
 
-	printk(KERN_INFO "all args are valid!!!!!!!!!!!!\n");
+	
 	struct task_struct *current_task = current;
+	printk(KERN_INFO "process with pid %d entered the fight func\n",current_task->pid);
 	// check if arguments are valid
 	 if (level < 0 || (type != CREATURE_ORC && type != CREATURE_DEMON)) {
         return -EINVAL;
@@ -89,7 +91,6 @@ int sys_rpg_fight(int type , int level){
 		//errno = EINVAL;
 		return -EINVAL;	
 	}
-	printk(KERN_INFO "all args are valid\n");
 
 	//getting the party info
 	struct task_struct* leader = current -> group_leader;
@@ -102,7 +103,7 @@ int sys_rpg_fight(int type , int level){
 		list_for_each_safe (position, tmp, &(leader->party_list)){
 			entry = list_entry (position, struct player, my_list);
 			(entry->player_level)++;
-			printk(KERN_INFO "player with pid %d is now a level %d player\n",entry->player_pid,entry->player_level);
+			printk(KERN_INFO "player with pid %d win and now his level is %d\n",entry->player_pid,entry->player_level);
 		}
 		
 		return WIN;		
@@ -115,6 +116,7 @@ int sys_rpg_fight(int type , int level){
 		list_for_each_safe (position, tmp, &(leader->party_list)){
 			entry = list_entry (position, struct player, my_list);
 			(entry->player_level)--;
+			printk(KERN_INFO "player with pid %d loose and now his level is %d\n",entry->player_pid,entry->player_level);
 			if(entry->player_level < 0){
 				entry->player_level = 0;
 					
@@ -246,20 +248,25 @@ int get_player_level(struct task_struct* leader,pid_t pid){
 
 int sys_rpg_join(pid_t player){
 	struct task_struct *current_task = current;
+	printk(KERN_INFO "in join pid input is %d\n",player);
 	struct task_struct *player_task;
 	player_task = find_task_by_pid(player); 
+	printk(KERN_INFO "process with pid %d is trying to join process with pid %d\n",current_task->pid,player_task->pid);
 	if(!player_task){
+		printk(KERN_INFO "player does not exist\n");
 		//player doesn't exist
 		//errno = ESRCH;
 		return -ESRCH;
 	}
 	if(!has_character(current_task) || !has_character(player_task)){
+		printk(KERN_INFO "has no character\n");
 		//process or player does not havs a character
 		//errno = EINVAL;
 		return -EINVAL;
 	}
 	if(current_task->party_member == NOT_A_MEMBER){
 		//proccess in not a party member
+		printk(KERN_INFO "player is not a party member\n");
 		struct player* tmp;
 		//obtain the first node, proccess node
 		tmp = list_entry(current_task->party_list.next, struct player, my_list);
@@ -267,8 +274,9 @@ int sys_rpg_join(pid_t player){
 		list_del(&tmp->my_list);
 		//add node to the player list
 		struct task_struct* leader = player_task->group_leader;
+		printk(KERN_INFO "the leader's pid is %d\n",player_task->group_leader->pid);
 		if(leader == NULL){
-			printk(KERN_INFO "pointer problemssssssssssss\n");
+			printk(KERN_INFO "sssssssssssssssssssysssssssssss\n");
 		}
 		list_add_tail(&tmp->my_list, &(leader->party_list));
 		current_task->group_leader = leader;
