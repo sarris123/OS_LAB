@@ -165,7 +165,7 @@ int calc_strength(int type, struct task_struct * leader){
 int sys_rpg_get_stats(struct rpg_stats* stats){
 	//checking if stats is a NULL
 	if(stats == NULL){
-		//errno = EINVAL;
+		printk(KERN_INFO "stats is NULL\n");
 		return -EINVAL;
 	}
 
@@ -178,6 +178,8 @@ int sys_rpg_get_stats(struct rpg_stats* stats){
 	}
 	struct rpg_stats* my_stats = (struct rpg_stats*)kmalloc(sizeof(struct rpg_stats), GFP_KERNEL);
 	if(my_stats == NULL){
+
+		printk(KERN_INFO "failed to Allocate\n");
 		//allocation failed
 		//errno = -ENOMEM;
 		return -ENOMEM;
@@ -211,8 +213,9 @@ int sys_rpg_get_stats(struct rpg_stats* stats){
 	my_stats->mage_levels = mage_levels;
 
 	//sending info back to user 
-	if(copy_to_user(&stats,&my_stats,sizeof(struct rpg_stats))){
+	if(copy_to_user(stats,my_stats,sizeof(struct rpg_stats))){
 		//errno = EFAULT;  // Bad address
+		printk(KERN_INFO "failed to send\n");
 		kfree(my_stats);
 		return -EFAULT;
 	}
